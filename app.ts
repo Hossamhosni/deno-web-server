@@ -1,13 +1,29 @@
-import { serve } from "https://deno.land/std/http/server.ts";
-import { serveFile } from "https://deno.land/std/http/file_server.ts";
+import { Application, Router, send } from "./deps.ts";
+import * as IndexRouter from "./routes/indexRouter.ts";
+import * as UsersRouter from "./routes/usersRouter.ts";
 
-const PORT = 3000;
+const PORT = "3000";
 const HOSTNAME = "0.0.0.0";
+const app = new Application();
+const router = new Router();
 
-const server = serve({ port: PORT, hostname: HOSTNAME });
+IndexRouter.use("/", router);
 
-console.log(`Server now running at http://${HOSTNAME}:${PORT}`);
-for await (const req of server) {
-	const html = await serveFile(req, "index.html");
-	req.respond(html);
-}
+UsersRouter.use("/users", router);
+
+router.get("/users/:name", (ctx) => {
+	ctx.response.body = ctx.params.name;
+});
+
+router.get("/public/:path+", async (ctx) => {
+	await send(ctx, ctx.request.url.pathname, { root: Deno.cwd() });
+});
+
+app.addEventListener("error", (err) => {
+	console.log(err);
+});
+
+app.use(router.routes());
+app.use(router.allowedMethods());
+
+await app.listen(`${HOSTNAME}:${PORT}`);
